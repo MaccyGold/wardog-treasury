@@ -1,9 +1,5 @@
 ﻿import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '../../../../lib/supabase'
 
 export async function GET() {
   try {
@@ -18,10 +14,12 @@ export async function GET() {
       .from('videos')
       .upsert(videosToSync, { onConflict: 'id' })
 
-    if (error) throw error
+    if (error) {
+      return NextResponse.json({ success: false, supabaseError: error.message }, { status: 200 })
+    }
 
     return NextResponse.json({ success: true, count: videosToSync.length })
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    return NextResponse.json({ success: false, exception: err.message }, { status: 200 })
   }
 }
