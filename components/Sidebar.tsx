@@ -10,7 +10,7 @@ export default function Sidebar() {
   const navItems = [
     { label: 'Gold Exchange', href: '/gold-exchange', icon: '📈', tooltip: 'Live market rate & AI economy trends' },
     { label: 'Video Feeds', href: '/#videos', icon: '📹', tooltip: 'Official dev updates & gameplay videos' },
-    { label: 'Latest News & X', href: '/#news', icon: '📰', tooltip: 'AI summaries & social media updates' },
+    { label: 'News', href: '/#news', icon: '📰', tooltip: 'AI summaries & WARDOGS news feed' },
     { label: 'Loadout Builder', href: '/loadout-builder', icon: '🛠️', tooltip: 'Simulate gear cost, weight & movement speed' },
   ]
 
