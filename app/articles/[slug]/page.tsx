@@ -1,7 +1,7 @@
-import { supabase } from '../../../../lib/supabase'
+import { supabase } from '../../../lib/supabase'
 import { notFound } from 'next/navigation'
 
-export default async function ArticlePage({ params }: { params: { slug: string } }) {
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
   const { data: article, error } = await supabase
