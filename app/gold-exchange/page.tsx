@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import Sidebar from '../../components/Sidebar'
 import Link from 'next/link'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { createClient } from '@supabase/supabase-js'
@@ -76,9 +75,8 @@ export default function GoldExchange() {
   const latestRate = rates.length > 0 ? rates[rates.length - 1].price_in_cash : 272761
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100">
-      <Sidebar />
-      <main className="flex-1 ml-20 p-8 max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+            <main className="flex-1 ml-20 p-8 max-w-6xl mx-auto space-y-8">
         <header className="border-b border-slate-800 pb-6 flex justify-between items-end">
           <div>
             <h1 className="text-4xl font-extrabold text-amber-500 tracking-tight">WARDOGS Gold Exchange</h1>

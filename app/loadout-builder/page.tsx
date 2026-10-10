@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Sidebar from '../../components/Sidebar'
 import Link from 'next/link'
 
 const WEAPONS = [
@@ -52,9 +51,8 @@ export default function LoadoutBuilder() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100">
-      <Sidebar />
-      <main className="flex-1 ml-20 p-8 max-w-5xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+            <main className="flex-1 ml-20 p-8 max-w-5xl mx-auto space-y-8">
         <header className="border-b border-slate-800 pb-6 flex justify-between items-end">
           <h1 className="text-4xl font-extrabold text-amber-500 tracking-tight">WARDOGS Loadout Simulator</h1>
           <p className="text-slate-400 text-sm mt-1">Calculate loadout weight penalties, sprint performance, and total deploy costs.</p>
