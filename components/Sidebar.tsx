@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -8,9 +8,9 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   const navItems = [
-    { label: 'Home & Videos', href: '/', icon: '📹', tooltip: 'Official dev vlogs & video feed' },
-    { label: 'Gold Exchange', href: '/gold-exchange', icon: '📈', tooltip: 'Live market rates & AI economy trends' },
-    { label: 'News', href: '/#news', icon: '📰', tooltip: 'AI summaries & community updates' },
+    { label: 'Gold Exchange', href: '/', icon: '📊', tooltip: 'Live market rates & AI economy trends' },
+    { label: 'Videos', href: '/videos', icon: '📹', tooltip: 'Official dev vlogs & video feed' },
+    { label: 'News', href: '/news', icon: '📰', tooltip: 'AI summaries & community updates' },
     { label: 'Loadout Builder', href: '/loadout-builder', icon: '🛠️', tooltip: 'Simulate kit cost, weight & movement speed' },
   ]
 
