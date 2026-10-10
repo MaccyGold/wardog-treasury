@@ -15,10 +15,10 @@ export default async function Home() {
   }
 
   const bulkheadVideos = [
-    { id: 'ugkuP4a3xk4', title: 'WARDOGS | 10 Reasons NOT to Buy', url: 'http://www.youtube.com/watch?v=ugkuP4a3xk4' },
-    { id: '8sgSjweihnw', title: 'WARDOGS | Addressing the "Announcement"', url: 'http://www.youtube.com/watch?v=8sgSjweihnw' },
-    { id: 's1YpSHod0FA', title: 'WARDOGS | The #1 Rule of Anti-Cheat', url: 'http://www.youtube.com/watch?v=s1YpSHod0FA' },
-    { id: 'jZFYCxfXJ3Y', title: 'New Studio Showcase! HUGE Year for WARDOGS incoming...', url: 'http://www.youtube.com/watch?v=jZFYCxfXJ3Y' }
+    { id: 'ugkuP4a3xk4', title: 'WARDOGS | 10 Reasons NOT to Buy', url: 'https://www.youtube.com/watch?v=ugkuP4a3xk4', thumb: 'https://img.youtube.com/vi/ugkuP4a3xk4/maxresdefault.jpg' },
+    { id: '8sgSjweihnw', title: 'WARDOGS | Addressing the "Announcement"', url: 'https://www.youtube.com/watch?v=8sgSjweihnw', thumb: 'https://img.youtube.com/vi/8sgSjweihnw/maxresdefault.jpg' },
+    { id: 's1YpSHod0FA', title: 'WARDOGS | The #1 Rule of Anti-Cheat', url: 'https://www.youtube.com/watch?v=s1YpSHod0FA', thumb: 'https://img.youtube.com/vi/s1YpSHod0FA/maxresdefault.jpg' },
+    { id: 'jZFYCxfXJ3Y', title: 'New Studio Showcase! HUGE Year for WARDOGS incoming...', url: 'https://www.youtube.com/watch?v=jZFYCxfXJ3Y', thumb: 'https://img.youtube.com/vi/jZFYCxfXJ3Y/hqdefault.jpg' }
   ]
 
   return (
@@ -43,24 +43,21 @@ export default async function Home() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             {bulkheadVideos.map((video) => (
-              <div key={video.id} className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex flex-col">
-                <div className="aspect-video w-full bg-slate-950">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${video.id}`}
-                    title={video.title}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+              <a key={video.id} href={video.url} target="_blank" rel="noopener noreferrer" className="group bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex flex-col hover:border-amber-500/50 transition-colors">
+                <div className="aspect-video w-full bg-slate-950 relative overflow-hidden">
+                  <img src={video.thumb} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/20 transition-colors">
+                    <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-slate-950 font-bold text-lg shadow-lg group-hover:scale-110 transition-transform">
+                      &#9654;
+                    </div>
+                  </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-bold text-slate-100">
-                    <a href={video.url} target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 transition-colors">
-                      {video.title}
-                    </a>
+                  <h3 className="font-bold text-slate-100 group-hover:text-amber-400 transition-colors">
+                    {video.title}
                   </h3>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </section>
