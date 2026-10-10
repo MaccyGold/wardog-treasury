@@ -1,9 +1,10 @@
-export const dynamic = 'force-dynamic'
-
+import { connection } from 'next/server'
 import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 
 export default async function Home() {
+  await connection()
+
   const { data: articles, error } = await supabase
     .from('articles')
     .select('*')
