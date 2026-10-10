@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import Link from 'next/link'
 
 export default async function Home() {
   const { data: articles, error } = await supabase
@@ -28,23 +29,24 @@ export default async function Home() {
           {articles && articles.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2">
               {articles.map((article) => (
-                <article
-                  key={article.id}
-                  className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-amber-500/50 transition-colors"
-                >
-                  <span className="inline-block px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 mb-3">
-                    {article.category}
-                  </span>
-                  <h3 className="text-xl font-bold text-slate-100 mb-2">
-                    {article.title}
-                  </h3>
-                  <p className="text-slate-400 text-sm mb-4 line-clamp-3">
-                    {article.summary}
-                  </p>
-                  <div className="text-xs text-slate-500">
-                    {new Date(article.created_at).toLocaleDateString()}
-                  </div>
-                </article>
+                <Link key={article.id} href={`/articles/${article.slug}`} className="block group">
+                  <article className="bg-slate-900 border border-slate-800 rounded-lg p-6 group-hover:border-amber-500/50 transition-colors h-full flex flex-col justify-between">
+                    <div>
+                      <span className="inline-block px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 mb-3">
+                        {article.category}
+                      </span>
+                      <h3 className="text-xl font-bold text-slate-100 mb-2 group-hover:text-amber-400 transition-colors">
+                        {article.title}
+                      </h3>
+                      <p className="text-slate-400 text-sm mb-4 line-clamp-3">
+                        {article.summary}
+                      </p>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {new Date(article.created_at).toLocaleDateString()}
+                    </div>
+                  </article>
+                </Link>
               ))}
             </div>
           ) : (
