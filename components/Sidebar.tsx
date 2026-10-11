@@ -1,59 +1,65 @@
-﻿'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+﻿"use client";
+
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false)
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const navItems = [
-    { label: '// Gold Exchange', href: '/', icon: '📊', tooltip: 'Live market rates & economy telemetry' },
-    { label: '// Videos', href: '/videos', icon: '📹', tooltip: 'Official dev vlogs & video feed' },
-    { label: '// Bulletin Board', href: '/news', icon: '📰', tooltip: 'Tactical dispatches & field reports' },
-    { label: '// Loadout Builder', href: '/loadout-builder', icon: '🛠️', tooltip: 'Simulate kit cost, weight & movement speed' },
-  ]
+    { name: "// GOLD EXCHANGE", href: "/" },
+    { name: "// NEWS BULLETIN", href: "/bulletin" },
+    { name: "// LOADOUT BUILDER", href: "/loadout-builder" },
+    { name: "// VIDEO FEEDS", href: "/videos" },
+    { name: "// ACCESS TERMINAL", href: "/admin/dashboard" },
+  ];
 
   return (
-    <aside 
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
-      className={"fixed top-0 left-0 h-screen bg-slate-950/95 backdrop-blur-md border-r border-slate-800/80 z-50 transition-all duration-300 flex flex-col justify-between " + (isOpen ? "w-64 shadow-2xl shadow-amber-500/5" : "w-20")}
-    >
-      <div className="p-3 flex flex-col gap-8">
-        <Link href="/" className="flex items-center justify-center gap-3 overflow-hidden h-10 group">
-          <div className="w-9 h-9 rounded-none bg-amber-500 flex items-center justify-center font-mono font-black text-slate-950 flex-shrink-0 text-base shadow-[0_0_12px_#f59e0b] group-hover:scale-105 transition-transform">
-            W
+    <aside className="w-full md:w-64 bg-[#0d0d10] border-r-2 border-[#222327] p-6 flex flex-col justify-between shrink-0 font-mono select-none">
+      <div className="space-y-6">
+        {/* BRANDING HEADER */}
+        <div>
+          <div className="text-[#c89b3c] font-black tracking-widest text-lg uppercase flex items-center gap-2">
+            <span className="w-2 h-2 bg-[#c89b3c] animate-pulse" />
+            WARDOGS_HUD
           </div>
-          {isOpen && (
-            <span className="font-mono font-black text-amber-500 tracking-widest text-xs whitespace-nowrap flex-1 uppercase">
-              // WARDOG_TREASURY
-            </span>
-          )}
-        </Link>
+          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+            SEC_OPS // V2.5.4
+          </div>
+        </div>
 
-        <nav className="flex flex-col gap-2">
+        {/* NAVIGATION LINKS */}
+        <nav className="space-y-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href;
             return (
-              <Link 
-                key={item.label} 
+              <Link
+                key={item.href}
                 href={item.href}
-                title={!isOpen ? item.label + ': ' + item.tooltip : ''}
-                className={"group flex items-center gap-4 p-3 rounded-none transition-all relative justify-start font-mono " + (isActive ? "bg-amber-500/10 text-amber-400 font-bold border-l-2 border-amber-500" : "text-slate-400 hover:bg-slate-900 hover:text-slate-100 border-l-2 border-transparent")}
+                className={`block px-4 py-3 text-xs font-black uppercase tracking-wider transition-all border ${
+                  isActive
+                    ? "bg-[#c89b3c] text-[#060608] border-[#c89b3c] shadow-lg"
+                    : "bg-[#060608] text-slate-300 border-[#1c1d22] hover:border-[#c89b3c] hover:text-[#c89b3c]"
+                }`}
               >
-                <span className="text-xl flex-shrink-0 w-8 text-center">{item.icon}</span>
-                {isOpen && (
-                  <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                    <span className="text-xs font-bold tracking-wider uppercase">{item.label}</span>
-                    <span className="text-[10px] text-slate-500 font-normal leading-tight font-sans">{item.tooltip}</span>
-                  </div>
-                )}
+                {item.name}
               </Link>
-            )
+            );
           })}
         </nav>
       </div>
+
+      {/* SYSTEM STATUS FOOTER */}
+      <div className="pt-6 border-t border-[#1c1d22] space-y-2">
+        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+          TELEMETRY LINK
+        </div>
+        <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          SUPABASE // ONLINE
+        </div>
+      </div>
     </aside>
-  )
+  );
 }

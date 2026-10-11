@@ -1,11 +1,13 @@
-import { supabase } from '../../../lib/supabase'
+import { supabase } from '@/lib/supabaseClient'
 import { notFound } from 'next/navigation'
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
+  if (!supabase) return notFound()
+
   const { data: article, error } = await supabase
-    .from('articles')
+    .from('news_bulletins')
     .select('*')
     .eq('slug', slug)
     .single()
@@ -15,21 +17,24 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-8">
-      <article className="max-w-3xl mx-auto space-y-6">
-        <a href="/" className="text-amber-500 hover:underline text-sm font-semibold">&larr; Back to Home</a>
-        <header className="border-b border-slate-800 pb-6 mt-4">
-          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 mb-3">
-            {article.category}
-          </span>
-          <h1 className="text-4xl font-extrabold text-slate-100 mb-4">{article.title}</h1>
-          <p className="text-slate-400 text-lg leading-relaxed">{article.summary}</p>
-          <p className="text-xs text-slate-500 mt-4">{new Date(article.published_at || article.created_at).toLocaleDateString()}</p>
-        </header>
-        <div className="prose prose-invert max-w-none text-slate-300 leading-relaxed space-y-4">
-          {article.content || 'Full content preview coming soon...'}
+    <div className="max-w-4xl mx-auto p-6 space-y-6 font-mono text-slate-100">
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 relative shadow-2xl space-y-4">
+        <div className="absolute top-0 left-0 w-full h-[4px] bg-[#c89b3c]" />
+
+        <div className="flex items-center gap-3 text-xs font-semibold text-[#c89b3c]">
+          <span>[{article.category || 'BULLETIN'}]</span>
+          <span>•</span>
+          <span>{new Date(article.published_at).toLocaleDateString()}</span>
         </div>
-      </article>
-    </main>
+
+        <h1 className="text-2xl md:text-3xl font-black text-slate-100 uppercase leading-snug">
+          {article.title}
+        </h1>
+
+        <div className="border-t border-[#1c1d22] pt-6 text-base text-slate-300 leading-relaxed space-y-4 whitespace-pre-wrap">
+          {article.content}
+        </div>
+      </div>
+    </div>
   )
 }

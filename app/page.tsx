@@ -1,151 +1,316 @@
-﻿'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import Link from 'next/link'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+"use client";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import React, { useState, useEffect } from "react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
+import { supabase } from "@/lib/supabaseClient";
+import WTHeaderLogo from "./components/icons/WTHeaderLogo";
+import GoldIcon from "./components/icons/GoldIcon";
 
-interface RateData {
-  recorded_at: string
-  price_in_cash: number
-  ai_analysis: string
+interface GoldRatePoint {
+  id: string;
+  price_in_cash: number;
+  ai_analysis: string;
+  recorded_at: string;
+  headline: string;
 }
 
-const TIME_RANGES = [
-  { label: '1W', days: 7 },
-  { label: '1M', days: 30 },
-  { label: '2M', days: 60 },
-  { label: '4M', days: 120 },
-  { label: '6M', days: 180 },
-  { label: '8M', days: 240 },
-  { label: '10M', days: 300 },
-  { label: '12M', days: 365 },
-  { label: '18M', days: 547 },
-  { label: '24M', days: 730 },
-  { label: 'ALL', days: 0 },
-]
+const RANGES = ["1W", "1M", "2M", "4M", "6M", "8M", "10M", "12M", "18M", "24M"];
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data: RateData = payload[0].payload
-    return (
-      <div className='bg-slate-900 border border-amber-500/40 p-4 rounded-none shadow-2xl max-w-xs space-y-2 text-xs font-mono'>
-        <div className='flex justify-between items-center border-b border-slate-800 pb-2'>
-          <span className='text-slate-400 font-semibold'>// {new Date(data.recorded_at).toLocaleDateString()}</span>
-          <span className='text-amber-400 font-bold text-sm'>${data.price_in_cash.toLocaleString()}</span>
-        </div>
-        <p className='text-slate-300 leading-relaxed font-sans text-xs'>
-          {data.ai_analysis || 'Regular daily market snapshot recorded.'}
-        </p>
-      </div>
-    )
-  }
-  return null
-}
-
-export default function Home() {
-  const [rates, setRates] = useState<RateData[]>([])
-  const [selectedRange, setSelectedRange] = useState(0)
+export default function HomePage() {
+  const [goldData, setGoldData] = useState<GoldRatePoint[]>([]);
+  const [selectedRange, setSelectedRange] = useState("1M");
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchData() {
-      const { data: rateData } = await supabase
-        .from('gold_rates')
-        .select('*')
-        .order('recorded_at', { ascending: true })
-      if (rateData) setRates(rateData)
+    async function fetchDashboardData() {
+      setLoading(true);
+      setFetchError(null);
+
+      if (!supabase) {
+        setFetchError("Supabase client is not initialized.");
+        setLoading(false);
+        return;
+      }
+
+      // Strictly querying gold_rates with exact locked schema columns
+      const { data: gold, error } = await supabase
+        .from("gold_rates")
+        .select("id, price_in_cash, ai_analysis, recorded_at, headline")
+        .order("recorded_at", { ascending: true });
+
+      if (error) {
+        console.error("Supabase gold_rates Fetch Error:", error);
+        setFetchError(error.message);
+      }
+
+      if (gold && gold.length > 0) {
+        const formattedGold = gold.map((item: any) => ({
+          id: item.id || Math.random().toString(),
+          price_in_cash: Number(item.price_in_cash || 0),
+          ai_analysis: item.ai_analysis || "",
+          recorded_at: item.recorded_at || new Date().toISOString(),
+          headline: item.headline || "Telemetry Exchange Update",
+        }));
+        setGoldData(formattedGold);
+      } else {
+        setGoldData([]);
+      }
+
+      setLoading(false);
     }
-    fetchData()
-  }, [])
 
-  const filteredRates = rates.filter(rate => {
-    if (selectedRange === 0) return true
-    const rateDate = new Date(rate.recorded_at)
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - selectedRange)
-    return rateDate >= cutoffDate
-  })
+    fetchDashboardData();
+  }, []);
 
-  const latestRate = rates.length > 0 ? rates[rates.length - 1].price_in_cash : 272761
+  // Filter data based on selected range selector (1W to 24M)
+  const getFilteredData = () => {
+    if (goldData.length === 0) return [];
+    const now = new Date().getTime();
+    let daysToSubtract = 30; // default 1M
+
+    switch (selectedRange) {
+      case "1W": daysToSubtract = 7; break;
+      case "1M": daysToSubtract = 30; break;
+      case "2M": daysToSubtract = 60; break;
+      case "4M": daysToSubtract = 120; break;
+      case "6M": daysToSubtract = 180; break;
+      case "8M": daysToSubtract = 240; break;
+      case "10M": daysToSubtract = 300; break;
+      case "12M": daysToSubtract = 365; break;
+      case "18M": daysToSubtract = 548; break;
+      case "24M": daysToSubtract = 730; break;
+      default: daysToSubtract = 30;
+    }
+
+    const cutoff = now - daysToSubtract * 86400000;
+    const filtered = goldData.filter((d) => new Date(d.recorded_at).getTime() >= cutoff);
+    return filtered.length > 0 ? filtered : goldData;
+  };
+
+  const chartData = getFilteredData();
+  const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1].price_in_cash : 0;
+  const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2].price_in_cash : currentPrice;
+  const priceChange = currentPrice - previousPrice;
+  const isPositive = priceChange >= 0;
+
+  // Maccy AI Summary from ai_analysis of the latest record
+  const latestSummary = chartData.length > 0 && chartData[chartData.length - 1].ai_analysis 
+    ? chartData[chartData.length - 1].ai_analysis 
+    : "Awaiting live telemetry intelligence update...";
+
+  // Dynamic Y-axis bounds
+  const prices = chartData.map((d) => d.price_in_cash);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 100;
+  const yDomain = [Math.floor(minPrice * 0.95), Math.ceil(maxPrice * 1.05)];
 
   return (
-    <main className='p-8 max-w-6xl mx-auto space-y-10 bg-slate-950 text-slate-100 min-h-screen selection:bg-amber-500 selection:text-slate-950'>
-      {/* TACTICAL HUD HEADER */}
-      <header className='border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative'>
-        <div className='absolute -top-3 left-0 text-[10px] font-mono tracking-widest text-amber-500/60 uppercase'>
-          // MARKET_FEED // INDEX: GOLD_EXCHANGE
+    <div className="max-w-7xl mx-auto space-y-8 font-mono text-slate-100 pb-16">
+      {/* HERO BANNER WITH WT HEADER LOGO */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 relative shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="absolute top-0 left-0 w-full h-[4px] bg-[#c89b3c]" />
+        
+        <div className="flex items-center gap-6">
+          <WTHeaderLogo className="w-20 h-20 shrink-0 drop-shadow-[0_0_15px_rgba(200,155,60,0.3)]" />
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-black text-[#c89b3c] tracking-widest uppercase">
+              WARDOGS TREASURY
+            </h1>
+            <p className="text-sm md:text-base text-slate-300 font-medium leading-relaxed">
+              Centralized intelligence command, gold rate telemetry, and combat archives.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className='text-3xl font-black tracking-wider text-amber-500 uppercase flex items-center gap-2'>
-            <span className='text-slate-600 font-mono'>//</span> WARDOG TREASURY
-          </h1>
-          <p className='text-slate-400 mt-1 text-sm font-mono'>
-            [GLOBAL FINANCIAL TERMINAL] Real-time market tracking, economy telemetry, and asset intelligence.
+
+        <div className="flex items-center gap-4 self-stretch md:self-auto justify-end">
+          <div className="bg-[#060608] border border-[#222327] px-5 py-3 text-right shadow-inner">
+            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">SYS STATUS</div>
+            <div className="text-sm font-black text-emerald-400 mt-0.5">// ONLINE</div>
+          </div>
+        </div>
+      </div>
+
+      {/* DATABASE ERROR NOTIFICATION BANNER */}
+      {fetchError && (
+        <div className="bg-rose-950/40 border-2 border-rose-600 p-5 text-rose-200 text-sm flex items-center justify-between shadow-lg">
+          <span><strong>SUPABASE SYNC WARNING:</strong> {fetchError}</span>
+        </div>
+      )}
+
+      {/* MACCY AI GOLD SUMMARY BOX */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-6 shadow-xl flex items-start gap-5">
+        <div className="w-3.5 h-3.5 rounded-full bg-[#c89b3c] animate-pulse mt-1.5 shrink-0 shadow-[0_0_10px_#c89b3c]" />
+        <div className="space-y-1.5">
+          <div className="text-xs font-black text-[#c89b3c] uppercase tracking-widest">
+            MACCY AI MARKET INTEL BRIEFING
+          </div>
+          <p className="text-sm md:text-base text-slate-200 leading-relaxed font-sans">
+            {latestSummary}
           </p>
         </div>
-        <nav className='flex flex-wrap gap-4 text-xs font-mono uppercase tracking-wider bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-800'>
-          <Link href='/' className='text-amber-500 border-b border-amber-500 pb-0.5 font-bold'>// Gold Exchange</Link>
-          <Link href='/videos' className='text-slate-400 hover:text-amber-400 transition-colors'>// Videos</Link>
-          <Link href='/news' className='text-slate-400 hover:text-amber-400 transition-colors'>// News</Link>
-          <Link href='/loadout-builder' className='text-slate-400 hover:text-amber-400 transition-colors'>// Loadout</Link>
-        </nav>
-      </header>
+      </div>
 
-      {/* HERO SECTION */}
-      <section className='space-y-6'>
-        <div className='bg-slate-900 border border-slate-800 rounded-none p-6 border-l-4 border-l-amber-500 space-y-2 shadow-2xl relative'>
-          <div className='flex items-center gap-2 font-mono'>
-            <span className='px-2 py-0.5 text-[10px] font-bold bg-amber-500 text-slate-950 uppercase tracking-widest'>
-              // GEMINI AI BRIEFING
+      {/* GOLD EXCHANGE TELEMETRY CHART */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 space-y-6 relative shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-[#1c1d22] pb-6">
+          <div className="flex items-center gap-4">
+            <GoldIcon className="w-10 h-10 shrink-0 drop-shadow-[0_0_10px_rgba(200,155,60,0.4)]" />
+            <div>
+              <h2 className="text-2xl font-black text-slate-100 uppercase tracking-wider">
+                GOLD MARKET TELEMETRY
+              </h2>
+              <p className="text-sm text-slate-400">Daily exchange fluctuations and market trend analysis.</p>
+            </div>
+          </div>
+
+          <div className="flex items-baseline gap-4 bg-[#060608] border border-[#222327] px-6 py-3.5 shadow-inner">
+            <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">CURRENT RATE:</span>
+            <span className="text-2xl font-black text-[#c89b3c]">
+              {currentPrice.toLocaleString()} <span className="text-xs text-slate-400">GOLD</span>
             </span>
-            <span className='text-xs text-slate-500'>[SYS_TIME: 08:00 UTC]</span>
+            <span className={`text-sm font-black ${isPositive ? "text-emerald-400" : "text-rose-500"}`}>
+              {isPositive ? `+${priceChange.toLocaleString()}` : priceChange.toLocaleString()}
+            </span>
           </div>
-          <p className='text-slate-200 text-sm leading-relaxed font-sans'>
-            Gold prices remain stable following Bulkhead patch adjustments and market liquidity recovery.
-          </p>
         </div>
 
-        <div className='grid gap-6 md:grid-cols-3'>
-          <div className='bg-slate-900 border border-slate-800 rounded-none p-6 flex flex-col justify-center items-center shadow-xl relative group'>
-            <div className='absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-amber-500'></div>
-            <div className='absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-amber-500'></div>
-            <span className='text-xs font-mono font-bold text-slate-400 uppercase tracking-widest mb-2'>// 1 BAR EXCHANGE RATE</span>
-            <span className='text-4xl font-black text-amber-500 font-mono'>${latestRate.toLocaleString()}</span>
-            <span className='text-[10px] font-mono text-slate-500 mt-2 uppercase'>IN-GAME CASH EQUIVALENT</span>
-          </div>
+        {/* RANGE SELECTOR BAR (1W TO 24M) */}
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mr-3">TIMEFRAME:</span>
+          {RANGES.map((range) => (
+            <button
+              key={range}
+              onClick={() => setSelectedRange(range)}
+              className={`px-4 py-2 text-xs font-black transition-all border ${
+                selectedRange === range
+                  ? "bg-[#c89b3c] text-black border-[#c89b3c] shadow-lg shadow-[#c89b3c]/25 scale-105"
+                  : "bg-[#060608] text-slate-300 border-[#222327] hover:border-[#c89b3c] hover:text-[#c89b3c]"
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
 
-          <div className='md:col-span-2 bg-slate-900 border border-slate-800 rounded-none p-6 space-y-4 shadow-xl relative'>
-            <div className='flex flex-wrap justify-between items-center gap-4 border-b border-slate-800/80 pb-3'>
-              <h3 className='text-xs font-mono font-extrabold text-amber-400 uppercase tracking-widest'>// RATE_TELEMETRY_HISTORY</h3>
-              <div className='flex flex-wrap gap-1 bg-slate-950 p-1 rounded-none border border-slate-800 font-mono text-xs'>
-                {TIME_RANGES.map(range => (
-                  <button
-                    key={range.label}
-                    onClick={() => setSelectedRange(range.days)}
-                    className={'px-2 py-0.5 text-[10px] font-bold transition-colors ' + (selectedRange === range.days ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800')}
-                  >
-                    {range.label}
-                  </button>
+        {/* RECHARTS AREA CHART WITH VISIBLE DOTS */}
+        <div className="h-80 w-full pt-4">
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center text-[#c89b3c] text-base font-bold animate-pulse">
+              // LOADING_MARKET_TELEMETRY...
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-base font-bold">
+              // NO_TELEMETRY_DATA_RECORDED
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#c89b3c" stopOpacity={0.5} />
+                    <stop offset="95%" stopColor="#c89b3c" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2026" vertical={false} />
+                <XAxis
+                  dataKey="recorded_at"
+                  stroke="#94a3b8"
+                  fontSize={13}
+                  tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                />
+                <YAxis stroke="#94a3b8" fontSize={13} domain={yDomain} />
+                
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0d0d10",
+                    borderColor: "#c89b3c",
+                    borderWidth: "2px",
+                    borderRadius: "0px",
+                    color: "#f8fafc",
+                    fontFamily: "monospace",
+                    fontSize: "14px",
+                    boxShadow: "0 15px 25px -5px rgba(0, 0, 0, 0.7)",
+                  }}
+                  labelStyle={{ color: "#c89b3c", fontWeight: "bold", marginBottom: "6px" }}
+                  itemStyle={{ color: "#f8fafc", fontWeight: "bold" }}
+                  labelFormatter={(label) => `DATE: ${new Date(label).toLocaleDateString()}`}
+                  formatter={(val: any) => [`${Number(val || 0).toLocaleString()} GOLD`, "RATE"]}
+                />
+
+                <Area
+                  type="monotone"
+                  dataKey="price_in_cash"
+                  stroke="#c89b3c"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#goldGradient)"
+                  dot={{ stroke: "#c89b3c", strokeWidth: 2, fill: "#0d0d10", r: 5 }}
+                  activeDot={{ r: 7, fill: "#c89b3c", stroke: "#fff", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* HISTORICAL TELEMETRY EVENT LOG TABLE */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 space-y-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#1c1d22] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 bg-[#c89b3c] shadow-[0_0_8px_#c89b3c]" />
+            <h2 className="text-xl font-black text-slate-100 uppercase tracking-wider">
+              HISTORICAL TELEMETRY EVENT LOG
+            </h2>
+          </div>
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">// ARCHIVE_FEED</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          {chartData.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 text-sm font-bold">
+              // NO_ARCHIVED_EVENTS_RECORDED_IN_DATABASE
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[#1c1d22] text-xs text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 font-bold">Timestamp</th>
+                  <th className="py-3.5 px-4 font-bold">Headline</th>
+                  <th className="py-3.5 px-4 font-bold">Gold Exchange Rate</th>
+                  <th className="py-3.5 px-4 font-bold">AI Intelligence Analysis</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1c1d22]">
+                {chartData.slice().reverse().map((row) => (
+                  <tr key={row.id} className="hover:bg-[#16171d] transition-colors">
+                    <td className="py-4 px-4 text-slate-300 whitespace-nowrap text-xs">
+                      {new Date(row.recorded_at).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 text-slate-100 font-bold">
+                      {row.headline}
+                    </td>
+                    <td className="py-4 px-4 text-[#c89b3c] font-black whitespace-nowrap">
+                      {row.price_in_cash.toLocaleString()} GOLD
+                    </td>
+                    <td className="py-4 px-4 text-slate-400 font-sans text-sm">
+                      {row.ai_analysis || "No analysis recorded."}
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-
-            <div className='h-64 w-full'>
-              <ResponsiveContainer width='100%' height='100%'>
-                <LineChart data={filteredRates}>
-                  <XAxis dataKey='recorded_at' tickFormatter={str => new Date(str).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })} stroke='#64748b' fontSize={11} fontFamily='monospace' />
-                  <YAxis stroke='#64748b' fontSize={11} fontFamily='monospace' tickFormatter={val => '$' + (val / 1000) + 'k'} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type='monotone' dataKey='price_in_cash' stroke='#f59e0b' strokeWidth={2} dot={{ r: 3, fill: '#f59e0b' }} activeDot={{ r: 6, fill: '#fbbf24' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+              </tbody>
+            </table>
+          )}
         </div>
-      </section>
-    </main>
-  )
+      </div>
+    </div>
+  );
 }

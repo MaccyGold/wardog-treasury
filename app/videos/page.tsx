@@ -1,112 +1,277 @@
-﻿import { supabase } from '../../lib/supabase'
-import Link from 'next/link'
+﻿"use client";
 
-interface Video {
-  id: string
-  title: string
-  url: string
-  thumbnail_url: string
-  published_at: string
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+function VideoIcon({ className = "w-16 h-16" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path 
+        d="M12 2L4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-5.45 8-12V5l-8-3z" 
+        stroke="#c89b3c" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
+      <polygon points="10,8 16,12 10,16" fill="#c89b3c" />
+    </svg>
+  );
 }
 
-export default async function VideosPage() {
-  const { data: videos, error } = await supabase
-    .from('videos')
-    .select('*')
-    .order('published_at', { ascending: false })
+interface VideoItem {
+  id: string;
+  title: string;
+  description?: string;
+  youtube_url?: string;
+  url?: string;
+  video_id?: string;
+  category?: string;
+  source?: string;
+  tags?: string[];
+  created_at?: string;
+  published_at?: string;
+}
 
-  // Group videos dynamically by start of week
-  const groupedVideos = (videos || []).reduce((acc, video) => {
-    const d = new Date(video.published_at || Date.now())
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-    const startOfWeek = new Date(d.setDate(diff))
-    const weekLabel = `// WEEK OF ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}`
+function getYouTubeEmbedUrl(item: VideoItem): string | null {
+  const rawUrl = item.youtube_url || item.url || item.video_id;
+  if (!rawUrl) return null;
 
-    if (!acc[weekLabel]) acc[weekLabel] = []
-    acc[weekLabel].push(video)
-    return acc
-  }, {} as Record<string, Video[]>)
+  const lowerUrl = rawUrl.toLowerCase();
+  // Hard block any URL containing shorts
+  if (lowerUrl.includes("shorts") || lowerUrl.includes("/shorts/")) {
+    return null;
+  }
+
+  if (lowerUrl.includes("youtube.com/embed/")) {
+    return rawUrl;
+  }
+
+  let videoId = rawUrl;
+  if (rawUrl.includes("v=")) {
+    videoId = rawUrl.split("v=")[1]?.split("&")[0] || rawUrl;
+  } else if (rawUrl.includes("youtu.be/")) {
+    videoId = rawUrl.split("youtu.be/")[1]?.split("?")[0] || rawUrl;
+  }
+
+  return `https://www.youtube.com/embed/${videoId}`;
+}
+
+type FilterCategory = "ALL" | "BULKHEAD" | "COMMUNITY";
+
+export default function VideosPage() {
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterCategory>("ALL");
+
+  useEffect(() => {
+    async function fetchVideos() {
+      setLoading(true);
+      setFetchError(null);
+
+      if (!supabase) {
+        setFetchError("Supabase client is not initialized.");
+        setLoading(false);
+        return;
+      }
+
+      let { data, error } = await supabase.from("youtube_videos").select("*");
+
+      if (error || !data || data.length === 0) {
+        const fallbackRes = await supabase.from("videos").select("*");
+        if (!fallbackRes.error && fallbackRes.data && fallbackRes.data.length > 0) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.error("Supabase video fetch error:", error);
+        setFetchError(error.message);
+      } else if (data) {
+        // ULTIMATE SHORTS BLOCKER: Checks URL, title, tags, and description for 'shorts'
+        const standardVideos = data.filter((item) => {
+          const url = (item.youtube_url || item.url || item.video_id || "").toLowerCase();
+          const title = (item.title || "").toLowerCase();
+          const desc = (item.description || "").toLowerCase();
+          const tags = (item.tags || []).join(" ").toLowerCase();
+
+          const isShortUrl = url.includes("shorts");
+          const isShortText = title.includes("short") || desc.includes("short") || tags.includes("short");
+
+          return !isShortUrl && !isShortText;
+        });
+
+        setVideos(standardVideos);
+      }
+
+      setLoading(false);
+    }
+
+    fetchVideos();
+  }, []);
+
+  const filteredVideos = videos.filter((video) => {
+    if (activeFilter === "ALL") return true;
+
+    const sourceStr = (video.source || "").toUpperCase();
+    const categoryStr = (video.category || "").toUpperCase();
+    const titleStr = (video.title || "").toUpperCase();
+    const tagsStr = (video.tags || []).join(" ").toUpperCase();
+
+    const isBulkhead =
+      sourceStr.includes("BULKHEAD") ||
+      categoryStr.includes("DEV") ||
+      categoryStr.includes("BULKHEAD") ||
+      titleStr.includes("DEV") ||
+      titleStr.includes("UPDATE") ||
+      tagsStr.includes("DEV");
+
+    if (activeFilter === "BULKHEAD") return isBulkhead;
+    if (activeFilter === "COMMUNITY") return !isBulkhead;
+
+    return true;
+  });
 
   return (
-    <main className='p-8 max-w-6xl mx-auto space-y-10 bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-amber-500 selection:text-slate-950'>
-      {/* TACTICAL HUD HEADER */}
-      <header className='border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative'>
-        <div className='absolute -top-3 left-0 text-[10px] font-mono tracking-widest text-amber-500/60 uppercase'>
-          // SECURE_FEED // STREAM_ID: BULKHEAD_OFFICIAL
+    <div className="max-w-7xl mx-auto space-y-8 font-mono text-slate-100 pb-16">
+      {/* HEADER BANNER */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 relative shadow-2xl flex items-center justify-between gap-6">
+        <div className="absolute top-0 left-0 w-full h-[4px] bg-[#c89b3c]" />
+        
+        <div className="flex items-center gap-6">
+          <VideoIcon className="w-16 h-16 shrink-0 drop-shadow-[0_0_15px_rgba(200,155,60,0.4)]" />
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-black text-[#c89b3c] tracking-widest uppercase">
+              COMBAT VIDEO FEED
+            </h1>
+            <p className="text-sm md:text-base text-slate-300 font-medium leading-relaxed">
+              Archived tactical footage, developer streams, and operational recordings.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className='text-3xl font-black tracking-wider text-amber-500 uppercase flex items-center gap-2'>
-            <span className='text-slate-600 font-mono'>//</span> VIDEO ARCHIVE & INTEL
-          </h1>
-          <p className='text-slate-400 mt-1 text-sm font-mono'>
-            [ACTIVE CHANNEL: @BULKHEAD] Official dev vlogs, patch previews, and tactical debriefs.
-          </p>
-        </div>
-        <nav className='flex flex-wrap gap-4 text-xs font-mono uppercase tracking-wider bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-800'>
-          <Link href='/' className='text-slate-400 hover:text-amber-400 transition-colors'>// Gold Exchange</Link>
-          <Link href='/videos' className='text-amber-500 border-b border-amber-500 pb-0.5 font-bold'>// Videos</Link>
-          <Link href='/news' className='text-slate-400 hover:text-amber-400 transition-colors'>// News</Link>
-          <Link href='/loadout-builder' className='text-slate-400 hover:text-amber-400 transition-colors'>// Loadout</Link>
-        </nav>
-      </header>
 
-      <div className='flex justify-between items-center bg-slate-900/40 p-4 rounded-xl border border-slate-800'>
-        <span className='text-xs font-mono text-amber-400 uppercase tracking-widest'>
-          // STATUS: REAL-TIME SYNC ACTIVE
-        </span>
-        <a href='https://www.youtube.com/@BULKHEAD.' target='_blank' rel='noopener noreferrer' className='text-xs font-mono text-amber-500 hover:text-amber-400 transition-colors uppercase tracking-wider flex items-center gap-1.5'>
-          <span>// OPEN YOUTUBE CHANNEL</span> &rarr;
-        </a>
+        <div className="hidden md:block bg-[#060608] border border-[#222327] px-5 py-3 text-right shadow-inner">
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">VIDEO ARCHIVE</div>
+          <div className="text-sm font-black text-emerald-400 mt-0.5">// SIGNAL HIGH</div>
+        </div>
       </div>
 
-      {videos && videos.length > 0 ? (
-        <div className='space-y-12'>
-          {Object.entries(groupedVideos).map(([week, weekVideos]) => (
-            <section key={week} className='space-y-4'>
-              <div className='flex items-center gap-3 border-b border-slate-800 pb-2 font-mono'>
-                <span className='w-2 h-2 rounded-none bg-amber-500 shadow-[0_0_8px_#f59e0b]'></span>
-                <h3 className='text-sm font-black uppercase text-amber-400 tracking-widest'>{week}</h3>
-                <span className='text-[10px] text-slate-500'>[{weekVideos.length} {weekVideos.length === 1 ? 'RECORD' : 'RECORDS'}]</span>
-              </div>
-              <div className='grid gap-6 md:grid-cols-2'>
-                {weekVideos.map((video) => (
-                  <a key={video.id} href={video.url} target='_blank' rel='noopener noreferrer' className='group bg-slate-900 border border-slate-800 rounded-none overflow-hidden flex flex-col hover:border-amber-500/80 transition-all shadow-xl relative'>
-                    {/* Tactical corner accent */}
-                    <div className='absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-amber-500 opacity-0 group-hover:opacity-100 transition-opacity z-10'></div>
-                    <div className='absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-amber-500 opacity-0 group-hover:opacity-100 transition-opacity z-10'></div>
-
-                    <div className='aspect-video w-full bg-slate-950 relative overflow-hidden'>
-                      <img src={video.thumbnail_url} alt={video.title} className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100' />
-                      <div className='absolute inset-0 bg-slate-950/40 flex items-center justify-center group-hover:bg-slate-950/10 transition-colors'>
-                        <div className='w-12 h-12 bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.5)] group-hover:scale-110 transition-transform'>
-                          &#9654;
-                        </div>
-                      </div>
-                      <div className='absolute top-2 left-2 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-400 uppercase tracking-wider'>
-                        // INTEL_LOG
-                      </div>
-                    </div>
-                    <div className='p-5 flex flex-col justify-between flex-1 space-y-3 bg-gradient-to-b from-slate-900 to-slate-950'>
-                      <h4 className='font-bold text-slate-100 group-hover:text-amber-400 transition-colors text-sm uppercase tracking-wide leading-snug'>
-                        {video.title}
-                      </h4>
-                      <div className='flex justify-between items-center text-[11px] font-mono text-slate-500 pt-2 border-t border-slate-800/80'>
-                        <span>// UPLOADED: {new Date(video.published_at).toLocaleDateString()}</span>
-                        <span className='text-amber-500/80 group-hover:translate-x-1 transition-transform'>ACCESS &rarr;</span>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      ) : (
-        <div className='bg-slate-900 border border-slate-800 p-8 text-center font-mono text-slate-400 text-sm'>
-          // ERROR: NO VIDEO RECORDS FOUND IN DATABASE
+      {fetchError && (
+        <div className="bg-rose-950/40 border-2 border-rose-600 p-5 text-rose-200 text-sm shadow-lg">
+          <strong>SUPABASE SYNC WARNING:</strong> {fetchError}
         </div>
       )}
-    </main>
-  )
+
+      {/* CATEGORY SWITCHER */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-[#222327] pb-4">
+        <div className="flex items-center gap-2 bg-[#060608] border border-[#222327] p-1.5 shadow-inner">
+          <button
+            onClick={() => setActiveFilter("ALL")}
+            className={`px-4 py-2 text-xs font-black uppercase transition-all ${
+              activeFilter === "ALL"
+                ? "bg-[#c89b3c] text-black shadow-md"
+                : "text-slate-400 hover:text-[#c89b3c]"
+            }`}
+          >
+            [ ALL FOOTAGE ]
+          </button>
+          <button
+            onClick={() => setActiveFilter("BULKHEAD")}
+            className={`px-4 py-2 text-xs font-black uppercase transition-all ${
+              activeFilter === "BULKHEAD"
+                ? "bg-[#c89b3c] text-black shadow-md"
+                : "text-slate-400 hover:text-[#c89b3c]"
+            }`}
+          >
+            // BULKHEAD DEVS
+          </button>
+          <button
+            onClick={() => setActiveFilter("COMMUNITY")}
+            className={`px-4 py-2 text-xs font-black uppercase transition-all ${
+              activeFilter === "COMMUNITY"
+                ? "bg-[#c89b3c] text-black shadow-md"
+                : "text-slate-400 hover:text-[#c89b3c]"
+            }`}
+          >
+            // COMMUNITY CONTENT
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-400 font-bold tracking-wider">
+          SHOWING {filteredVideos.length} TRANSMISSIONS (SHORTS PURGED)
+        </div>
+      </div>
+
+      {/* VIDEO GRID */}
+      {loading ? (
+        <div className="bg-[#0d0d10] border-2 border-[#222327] p-16 text-center text-[#c89b3c] text-base font-bold animate-pulse">
+          // ACCESSING_TACTICAL_VIDEO_ARCHIVES...
+        </div>
+      ) : filteredVideos.length === 0 ? (
+        <div className="bg-[#0d0d10] border-2 border-[#222327] p-16 text-center text-slate-400 text-sm font-bold">
+          // NO_TRANSMISSIONS_MATCHING_FILTER
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {filteredVideos.map((item) => {
+            const embedUrl = getYouTubeEmbedUrl(item);
+
+            return (
+              <article 
+                key={item.id} 
+                className="bg-[#0d0d10] border-2 border-[#222327] p-6 space-y-4 hover:border-[#c89b3c] transition-all shadow-xl flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className="relative aspect-video w-full bg-[#060608] border border-[#1f2026] overflow-hidden rounded">
+                    {embedUrl ? (
+                      <iframe
+                        src={embedUrl}
+                        title={item.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-slate-500 font-bold">
+                        // VIDEO_STREAM_UNAVAILABLE
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-[#1c1d22] pb-2">
+                      <span className="text-xs text-[#c89b3c] font-black uppercase tracking-wider">
+                        {item.source ? `SOURCE: ${item.source}` : "// INTEL_TRANSMISSION"}
+                      </span>
+                      <span className="text-xs text-slate-400 font-bold">
+                        {item.published_at || item.created_at
+                          ? new Date(item.published_at || item.created_at!).toLocaleDateString()
+                          : "ARCHIVED"}
+                      </span>
+                    </div>
+
+                    <h2 className="text-lg font-black text-slate-100 uppercase tracking-wide">
+                      {item.title}
+                    </h2>
+
+                    {item.description && (
+                      <p className="text-sm text-slate-300 font-sans leading-relaxed line-clamp-3">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-[#1c1d22] text-xs text-slate-500 flex justify-between items-center font-bold">
+                  <span>RECORDED TRANSMISSION</span>
+                  <span className="text-[#c89b3c]">// 1080P HD</span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,81 +1,146 @@
-﻿import { supabase } from '../../lib/supabase'
-import Link from 'next/link'
+﻿"use client";
 
-export default async function NewsPage() {
-  const { data: articles } = await supabase
-    .from('articles')
-    .select('*')
-    .order('created_at', { ascending: false })
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import NewsIcon from "../components/icons/NewsIcon";
+
+interface NewsBulletin {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  source: string;
+  tags?: string[];
+  published_at: string;
+}
+
+export default function NewsPage() {
+  const [news, setNews] = useState<NewsBulletin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchNews() {
+      setLoading(true);
+      setFetchError(null);
+
+      if (!supabase) {
+        setFetchError("Supabase client is not initialized.");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("news_bulletins")
+        .select("id, title, content, category, source, tags, published_at")
+        .order("published_at", { ascending: false });
+
+      if (error) {
+        console.error("Supabase news fetch error:", error);
+        setFetchError(error.message);
+      } else if (data) {
+        setNews(data);
+      }
+
+      setLoading(false);
+    }
+
+    fetchNews();
+  }, []);
 
   return (
-    <main className='p-8 max-w-6xl mx-auto space-y-10 bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-amber-500 selection:text-slate-950'>
-      {/* TACTICAL HUD HEADER */}
-      <header className='border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative'>
-        <div className='absolute -top-3 left-0 text-[10px] font-mono tracking-widest text-amber-500/60 uppercase'>
-          // INTEL_FEED // DISPATCH_LEVEL: PUBLIC
+    <div className="max-w-5xl mx-auto space-y-8 font-mono text-slate-100 pb-16">
+      {/* HEADER BANNER WITH CUSTOM ASSET LOGO */}
+      <div className="bg-[#0d0d10] border-2 border-[#222327] p-8 relative shadow-2xl flex items-center justify-between gap-6">
+        <div className="absolute top-0 left-0 w-full h-[4px] bg-[#c89b3c]" />
+        
+        <div className="flex items-center gap-6">
+          <NewsIcon className="w-16 h-16 shrink-0 drop-shadow-[0_0_15px_rgba(200,155,60,0.4)]" />
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-black text-[#c89b3c] tracking-widest uppercase">
+              NEWS BULLETIN
+            </h1>
+            <p className="text-sm md:text-base text-slate-300 font-medium leading-relaxed">
+              Official Bulkhead updates, combat dispatches, and field intelligence.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className='text-3xl font-black tracking-wider text-amber-500 uppercase flex items-center gap-2'>
-            <span className='text-slate-600 font-mono'>//</span> BULLETIN BOARD & INTEL DISPATCHES
-          </h1>
-          <p className='text-slate-400 mt-1 text-sm font-mono'>
-            [FIELD REPORTS] Community announcements, official patch updates, and field telemetry.
-          </p>
-        </div>
-        <nav className='flex flex-wrap gap-4 text-xs font-mono uppercase tracking-wider bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-800'>
-          <Link href='/' className='text-slate-400 hover:text-amber-400 transition-colors'>// Gold Exchange</Link>
-          <Link href='/videos' className='text-slate-400 hover:text-amber-400 transition-colors'>// Videos</Link>
-          <Link href='/news' className='text-amber-500 border-b border-amber-500 pb-0.5 font-bold'>// News</Link>
-          <Link href='/loadout-builder' className='text-slate-400 hover:text-amber-400 transition-colors'>// Loadout</Link>
-        </nav>
-      </header>
 
-      <div className='flex justify-between items-center bg-slate-900/40 p-4 rounded-xl border border-slate-800 font-mono'>
-        <span className='text-xs text-amber-400 uppercase tracking-widest'>
-          // ACTIVE DISPATCHES: {articles ? articles.length : 0} POSTED
-        </span>
-        <span className='text-xs text-slate-500 uppercase tracking-wider'>
-          [VERIFIED_SOURCES_ONLY]
-        </span>
+        <div className="hidden md:block bg-[#060608] border border-[#222327] px-5 py-3 text-right shadow-inner">
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">FEED STATUS</div>
+          <div className="text-sm font-black text-emerald-400 mt-0.5">// LIVE DISPATCH</div>
+        </div>
       </div>
 
-      {articles && articles.length > 0 ? (
-        <div className='grid gap-6 md:grid-cols-2'>
-          {articles.map((article: any) => (
-            <Link key={article.id} href={`/articles/${article.slug}`} className='block group'>
-              <article className='bg-slate-900 border border-slate-800 rounded-none p-6 group-hover:border-amber-500/80 transition-all h-full flex flex-col justify-between relative'>
-                <div className='absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-amber-500 opacity-0 group-hover:opacity-100 transition-opacity'></div>
-                <div className='absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-amber-500 opacity-0 group-hover:opacity-100 transition-opacity'></div>
-
-                <div>
-                  <div className='flex justify-between items-center mb-3 font-mono text-[10px]'>
-                    <span className='px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold uppercase tracking-wider'>
-                      // {article.source_name || article.category || 'BULLETIN'}
-                    </span>
-                    <span className='text-slate-500'>
-                      [ID: {article.slug.slice(0, 8)}]
-                    </span>
-                  </div>
-                  <h3 className='text-lg font-bold text-slate-100 mb-2 group-hover:text-amber-400 transition-colors uppercase tracking-wide leading-snug'>
-                    {article.title}
-                  </h3>
-                  <p className='text-slate-400 text-xs leading-relaxed mb-4 line-clamp-3 font-sans'>
-                    {article.summary}
-                  </p>
-                </div>
-                <div className='flex justify-between items-center text-[10px] font-mono text-slate-500 pt-3 border-t border-slate-800/80'>
-                  <span>// POSTED: {new Date(article.created_at).toLocaleDateString()}</span>
-                  <span className='text-amber-500 group-hover:translate-x-1 transition-transform'>READ BULLETIN &rarr;</span>
-                </div>
-              </article>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className='bg-slate-900 border border-slate-800 p-8 text-center font-mono text-slate-400 text-sm'>
-          // NO DISPATCHES FOUND ON BULLETIN BOARD
+      {fetchError && (
+        <div className="bg-rose-950/40 border-2 border-rose-600 p-5 text-rose-200 text-sm shadow-lg">
+          <strong>SUPABASE SYNC WARNING:</strong> {fetchError}
         </div>
       )}
-    </main>
-  )
+
+      {/* ARTICLES LIST (ONE PER LINE) */}
+      {loading ? (
+        <div className="bg-[#0d0d10] border-2 border-[#222327] p-16 text-center text-[#c89b3c] text-base font-bold animate-pulse">
+          // FETCHING_INTELLIGENCE_DISPATCHES...
+        </div>
+      ) : news.length === 0 ? (
+        <div className="bg-[#0d0d10] border-2 border-[#222327] p-16 text-center text-slate-400 text-sm font-bold">
+          // NO_NEWS_DISPATCHES_FOUND_IN_DATABASE
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {news.map((item) => (
+            <article 
+              key={item.id} 
+              className="bg-[#0d0d10] border-2 border-[#222327] p-8 space-y-5 hover:border-[#c89b3c] transition-all shadow-xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-[#c89b3c]/40" />
+
+              {/* Meta Header */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1c1d22] pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="bg-[#c89b3c]/15 text-[#c89b3c] border border-[#c89b3c] px-3 py-1 text-xs font-black uppercase tracking-wider">
+                    {item.category}
+                  </span>
+                  <span className="text-xs text-slate-400 border border-[#222327] px-3 py-1 bg-[#060608] uppercase font-bold">
+                    SOURCE: {item.source}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400 font-bold tracking-wider">
+                  {new Date(item.published_at).toLocaleString()}
+                </span>
+              </div>
+
+              {/* Title & Body */}
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black text-slate-100 uppercase tracking-wide">
+                  {item.title}
+                </h2>
+                <p className="text-base text-slate-300 font-sans leading-relaxed">
+                  {item.content}
+                </p>
+              </div>
+
+              {/* Tags & Footer */}
+              <div className="pt-4 border-t border-[#1c1d22] flex flex-wrap items-center justify-between gap-4">
+                {item.tags && item.tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {item.tags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-[#c89b3c] bg-[#060608] px-2.5 py-1 border border-[#222327]">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : <div />}
+                
+                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                  AUTHENTICATED DISPATCH <span className="text-[#c89b3c] ml-2">// VERIFIED</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
