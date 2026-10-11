@@ -1,10 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const BULKHEAD_CHANNEL_ID = "UCPVan4eGsvtogvBO56LwSAw";
 
@@ -32,11 +28,24 @@ const SEED_VIDEOS = [
 
 export async function GET(request: Request) {
   try {
+    // 1. Safely initialize Supabase inside the handler at runtime
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: "Missing Supabase environment variables." },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     let officialIngested = 0;
     let communityIngested = 0;
 
     if (YOUTUBE_API_KEY) {
-      // 1. Fetch Official Bulkhead Channel Videos
+      // 2. Fetch Official Bulkhead Channel Videos
       const officialRes = await fetch(
         `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${BULKHEAD_CHANNEL_ID}&part=snippet,id&order=date&maxResults=10&type=video`
       );
@@ -61,7 +70,7 @@ export async function GET(request: Request) {
         }
       }
 
-      // 2. Fetch Community Clips
+      // 3. Fetch Community Clips
       const communityRes = await fetch(
         `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&q=WARDOGS+gameplay&part=snippet,id&type=video&order=viewCount&maxResults=10`
       );
