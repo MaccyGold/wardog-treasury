@@ -225,7 +225,7 @@ export default function HomePage() {
                   dataKey="recorded_at"
                   stroke="#94a3b8"
                   fontSize={13}
-                  tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  tickFormatter={(val: string) => new Date(val).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 />
                 <YAxis stroke="#94a3b8" fontSize={13} domain={yDomain} />
                 
@@ -242,7 +242,7 @@ export default function HomePage() {
                   }}
                   labelStyle={{ color: "#c89b3c", fontWeight: "bold", marginBottom: "6px" }}
                   itemStyle={{ color: "#f8fafc", fontWeight: "bold" }}
-                  labelFormatter={(label) => `DATE: ${new Date(label).toLocaleDateString()}`}
+                  labelFormatter={(label: any) => `DATE: ${new Date(label).toLocaleDateString()}`}
                   formatter={(val: any) => [`${Number(val || 0).toLocaleString()} GOLD`, "RATE"]}
                 />
 
