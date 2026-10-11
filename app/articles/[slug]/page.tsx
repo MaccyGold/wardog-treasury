@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import { notFound } from 'next/navigation'
 
+export const dynamic = 'force-dynamic';
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
